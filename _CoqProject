@@ -1,3 +1,5 @@
--Q SetTheory SetTheory
+-R ./SetTheory SetTheory
+-R ./GroupTheory GroupTheory
 
 SetTheory/set_theory.v
+GroupTheory/group_theory.v
