@@ -2,4 +2,5 @@
 -R ./GroupTheory GroupTheory
 
 SetTheory/set_theory.v
+SetTheory/binary_operator.v
 GroupTheory/group_theory.v
