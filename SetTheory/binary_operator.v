@@ -471,27 +471,241 @@ Definition irreflexive R := forall a, ~(a />R<\ a).
 Definition comparable R := forall a b, a in (upon_relation R) -> b in (upon_relation R) -> (a />R<\ b \/ b />R<\ a).
 Definition equivalent R := reflexive R /\ symmetric R /\ transitive R.
 
-(* TO BE CONTINUED *)
+Record nonstrict_order_relation : Set := nonstrict_order_relation_init {
+  NORelation : binary_relation;
+  NORelation_cond : reflexive NORelation /\ antisymmetric NORelation /\ transitive NORelation
+}.
+Definition nonstrict_order_relation_to_binary_relation NOR := NORelation NOR.
+Coercion nonstrict_order_relation_to_binary_relation : nonstrict_order_relation >-> binary_relation.
 
-Definition nonstrict_order_relation R := reflexive R /\ antisymmetric R /\ transitive R.
-Definition loset R :=
-  nonstrict_order_relation R /\
-  (forall a b, a in (upon_relation R) ->
-    b in (upon_relation R) ->
-    a />R<\ b \/ b />R<\ a \/ a = b
-  )
+Record loset : Set := loset_init {
+  LOSet : nonstrict_order_relation;
+  LOSet_cond : forall a b, a in (upon_relation LOSet) ->
+                            b in (upon_relation LOSet) ->
+                            (a />LOSet<\ b \/ b />LOSet<\ a \/ a = b)
+}.
+Definition loset_to_nonstrict_order_relation LOS := LOSet LOS.
+Coercion loset_to_nonstrict_order_relation : loset >-> nonstrict_order_relation.
+
+Record poset : Set := poset_init {
+  POSet : nonstrict_order_relation;
+  POSet_cond : ~(forall a b, a in (upon_relation POSet) ->
+                              b in (upon_relation POSet) ->
+                              (a />POSet<\ b \/ b />POSet<\ a \/ a = b))
+}.
+Definition poset_to_nonstrict_order_relation POS := POSet POS.
+Coercion poset_to_nonstrict_order_relation : poset >-> nonstrict_order_relation.
+
+Record strict_order_relation : Set := strict_order_relation_init {
+  SORelation : binary_relation;
+  SORelation_cond : irreflexive SORelation /\ asymmetric SORelation /\ transitive SORelation
+}.
+Definition strict_order_relation_to_binary_relation SOR := SORelation SOR.
+Coercion strict_order_relation_to_binary_relation : strict_order_relation >-> binary_relation.
+
+Record strict_linear_order_relation : Set := strict_linear_order_relation_init {
+  SLORelation : strict_order_relation;
+  SLORelation_cond : comparable SLORelation
+}.
+Definition strict_linear_order_relation_to_strict_order_relation SLOR := SLORelation SLOR.
+Coercion strict_linear_order_relation_to_strict_order_relation : strict_linear_order_relation >-> strict_order_relation.
+
+Record strict_partial_order_relation : Set := strict_partial_order_relation_init {
+  SPORelation : strict_order_relation;
+  SPORelation_cond : ~comparable SPORelation
+}.
+Definition strict_partial_order_relation_to_strict_order_relation SPOR := SPORelation SPOR.
+Coercion strict_partial_order_relation_to_strict_order_relation : strict_partial_order_relation >-> strict_order_relation.
+
+Definition strictly_ordered {R : strict_order_relation} (a b : set) := a />R<\ b.
+Definition nonstrictly_ordered {R : nonstrict_order_relation} (a b : set) := a />R<\ b.
+Definition nonstrictly_neq_ordered {R : nonstrict_order_relation} (a b : set) := a />R<\ b /\ a <> b.
+
+Notation "a < b" := (strictly_ordered a b).
+Notation "a !< b" := (~strictly_ordered a b)(at level 70).
+Notation "a <= b" := (nonstrictly_ordered a b).
+Notation "a !<= b" := (~nonstrictly_ordered a b)(at level 70).
+Notation "a <!= b" := (nonstrictly_neq_ordered a b)(at level 70).
+Notation "a !<!= b" := (~nonstrictly_neq_ordered a b)(at level 70).
+
+Example reflexive_relation_contains_identity_relation : forall R,
+  reflexive R -> identity_relation (upon_relation R) subseteq R
 .
-Definition poset R := nonstrict_order_relation R /\ ~(loset R).
+Proof.
+  intros R H e H0.
+  unfold reflexive in H.
+  apply binary_relation_definition in H0.
+  destruct H0. destruct H1 as [a [b H1]]. subst.
+  apply identity_relation_definition in H0.
+  destruct H0. subst. apply H, H0.
+Qed.
 
-Definition strict_order_relation R := irreflexive R /\ asymmetric R /\ transitive R.
-Definition strict_linear_order_relation R := strict_order_relation R /\ comparable R.
-Definition strict_partial_order_relation R := strict_order_relation R /\ ~(comparable R).
+Example reflexive_inverse_is_reflexive : forall R, reflexive R -> reflexive (inverse_relation R).
+Proof.
+  intros R H e H0.
+  apply inverse_relation_definition, H.
+  apply upon_relation_definition.
+  apply upon_relation_definition in H0.
+  destruct H0.
+  - right. apply domain_definition in H0.
+    destruct H0 as [f H0].
+    apply -> inverse_relation_definition in H0.
+    apply image_definition. exists f. apply H0.
+  - left. apply image_definition in H0.
+    destruct H0 as [f H0].
+    apply -> inverse_relation_definition in H0.
+    apply domain_definition. exists f. apply H0.
+Qed.
 
-Definition order_relation R := nonstrict_order_relation R \/ strict_order_relation R.
+Example symmetric_inverse_is_symmetric : forall R, symmetric R -> symmetric (inverse_relation R).
+Proof.
+  intros R H a b H0.
+  apply inverse_relation_definition.
+  apply -> inverse_relation_definition in H0.
+  apply H, H0.
+Qed.
 
-(* Definition nonstrict_ordered {R} a b := 
- *)
-Reserved Notation "x '(=' y" (at level 20, no associativity).
-Reserved Notation "x '=)' y" (at level 20, no associativity).
+Example transitive_inverse_is_transitive : forall R, transitive R -> transitive (inverse_relation R).
+Proof.
+  intros R H a b c H0 H1.
+  apply inverse_relation_definition.
+  apply -> inverse_relation_definition in H0.
+  apply -> inverse_relation_definition in H1.
+  apply H with b. apply H1. apply H0.
+Qed.
+
+Example asymmetric_then_cap_inverse_is_empty : forall R, asymmetric R -> R cap (inverse_relation R) = {{}}.
+Proof.
+  intros R H. apply AXIOM_OF_EXTENSIONALITY.
+  intros z. split; intros H0.
+  - apply cap_definition in H0.
+    destruct H0.
+    apply binary_relation_definition in H0.
+    destruct H0. destruct H2 as [a [b H2]]. subst.
+    apply -> inverse_relation_definition in H1.
+    apply H in H0. apply H0 in H1. destruct H1.
+  - apply no_set_is_in_emptyset in H0. destruct H0.
+Qed.
+
+Example equivalent_then_idempotent : forall R, equivalent R -> (R @ R) = R.
+Proof.
+  intros R H. apply binary_relation_equality, AXIOM_OF_EXTENSIONALITY.
+  intros z. split; intros H0.
+  - apply binary_relation_definition in H0.
+    destruct H0. destruct H1 as [a [b H1]]. subst.
+    apply compose_relation_definition in H0.
+    destruct H0 as [c [H0 H1]].
+    destruct H as [H [H2 H3]].
+    apply H3 with c. apply H0. apply H1.
+  - apply binary_relation_definition in H0.
+    destruct H0. destruct H1 as [a [b H1]]. subst.
+    apply compose_relation_definition.
+    destruct H as [H [H1 H2]].
+    exists b. split. apply H0.
+    apply H, upon_relation_definition.
+    right. apply image_definition. exists a. apply H0.
+Qed.
+
+Example relation_subseteq_relation_compose_reflexive : forall (T R : binary_relation),
+  reflexive T -> (upon_relation R) = (upon_relation T) -> R subseteq (R @ T)
+.
+Proof.
+  intros T R H H0 e H1.
+  apply binary_relation_definition in H1.
+  destruct H1. destruct H2 as [a [b H2]]. subst.
+  apply compose_relation_definition. exists b. split.
+  apply H1. apply H. rewrite <- H0. apply upon_relation_definition.
+  right. apply image_definition. exists a. apply H1.
+Qed.
+
+Example relateion_subseteq_reflexive_compose_relation : forall (T R : binary_relation),
+  reflexive T -> (upon_relation R) = (upon_relation T) -> R subseteq (T @ R)
+.
+Proof.
+  intros T R H H0 e H1.
+  apply binary_relation_definition in H1.
+  destruct H1. destruct H2 as [a [b H2]]. subst.
+  apply compose_relation_definition. exists a. split.
+  apply H. rewrite <- H0. apply upon_relation_definition. left.
+  apply domain_definition. exists b. apply H1. apply H1.
+Qed.
+
+Example poset_inverse_cup_is_identity : forall R : poset,
+  R cap (inverse_relation R) = identity_relation (upon_relation R)
+.
+Proof.
+  intros R. apply AXIOM_OF_EXTENSIONALITY.
+  intros z. split; intros H.
+  - apply cap_definition in H. destruct H.
+    apply binary_relation_definition in H.
+    destruct H. destruct H1 as [a [b H1]]. subst.
+    apply -> inverse_relation_definition in H0.
+    apply identity_relation_definition. split.
+    + apply upon_relation_definition. left.
+      apply domain_definition. exists b. apply H.
+    + destruct (NORelation_cond R). destruct H2.
+      apply H2. apply H. apply H0.
+  - apply binary_relation_definition in H.
+    destruct H. destruct H0 as [a [b H0]]. subst.
+    apply identity_relation_definition in H.
+    destruct H. subst. apply upon_relation_definition in H.
+    apply cap_definition. destruct H; split;
+    apply domain_definition in H || apply image_definition in H;
+    destruct H as [f H]; destruct (NORelation_cond R); destruct H1.
+    + apply H0, upon_relation_definition. left. apply domain_definition.
+      exists f. apply H.
+    + apply inverse_relation_definition, H0, upon_relation_definition.
+      left. apply domain_definition. exists f. apply H.
+    + apply H0, upon_relation_definition. right. apply image_definition.
+      exists f. apply H.
+    + apply inverse_relation_definition, H0, upon_relation_definition.
+      right. apply image_definition. exists f. apply H.
+Qed.
+
+Example poset_idempotent : forall R : poset, (R @ R) = R.
+Proof.
+  intros R. apply binary_relation_equality, AXIOM_OF_EXTENSIONALITY.
+  intros z. split; intros H;
+  apply binary_relation_definition in H;
+  destruct H; destruct H0 as [a [b H0]]; subst.
+  - apply compose_relation_definition in H.
+    destruct H as [c [H H0]].
+    destruct (NORelation_cond R). destruct H2.
+    apply H3 with c. apply H. apply H0.
+  - apply compose_relation_definition. exists a.
+    destruct (NORelation_cond R). destruct H1.
+    split. apply H0, upon_relation_definition. left. apply domain_definition. exists b.
+    all : apply H.
+Qed.
+
+Example poset_inverse_is_poset : forall R : poset, exists S : poset, inverse_relation R = S.
+Proof.
+  intros R.
+  assert(exists T : nonstrict_order_relation, inverse_relation R = T). {
+    assert(reflexive (inverse_relation R) /\ antisymmetric (inverse_relation R) /\ transitive (inverse_relation R)). {
+      destruct (NORelation_cond R). destruct H0. split; try split.
+      - intros e H2. apply inverse_relation_definition. apply H, upon_relation_definition.
+        apply upon_relation_definition in H2. destruct H2.
+        + apply domain_definition in H2. destruct H2 as [f H2].
+          apply -> inverse_relation_definition in H2. right.
+          apply image_definition. exists f. apply H2.
+        + apply image_definition in H2. destruct H2 as [f H2].
+          left. apply -> inverse_relation_definition in H2.
+          apply domain_definition. exists f. apply H2.
+      - intros a b H2 H3. apply -> inverse_relation_definition in H2. apply -> inverse_relation_definition in H3.
+        apply H0. apply H3. apply H2.
+      - intros a b c H2 H3. apply inverse_relation_definition.
+        apply -> inverse_relation_definition in H2. apply -> inverse_relation_definition in H3.
+        apply H1 with b. apply H3. apply H2.
+    }
+    exists (nonstrict_order_relation_init (inverse_relation R) H). reflexivity.
+  }
+  destruct H as [T H'].
+  
+(*  TBD  *)
+
+  exists (poset_init (T) H0).
+  }).
+Qed.
 
 End BinaryRelation.
