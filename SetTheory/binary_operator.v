@@ -517,16 +517,35 @@ Record strict_partial_order_relation : Set := strict_partial_order_relation_init
 Definition strict_partial_order_relation_to_strict_order_relation SPOR := SPORelation SPOR.
 Coercion strict_partial_order_relation_to_strict_order_relation : strict_partial_order_relation >-> strict_order_relation.
 
-Definition strictly_ordered {R : strict_order_relation} (a b : set) := a />R<\ b.
-Definition nonstrictly_ordered {R : nonstrict_order_relation} (a b : set) := a />R<\ b.
-Definition nonstrictly_neq_ordered {R : nonstrict_order_relation} (a b : set) := a />R<\ b /\ a <> b.
+Definition strictly_ordered (R : strict_order_relation) (a b : set) := a />R<\ b.
+Definition nonstrictly_ordered (R : nonstrict_order_relation) (a b : set) := a />R<\ b.
+Definition nonstrictly_neq_ordered (R : nonstrict_order_relation) (a b : set) := a />R<\ b /\ a <> b.
 
-Notation "a < b" := (strictly_ordered a b).
-Notation "a !< b" := (~strictly_ordered a b)(at level 70).
-Notation "a <= b" := (nonstrictly_ordered a b).
-Notation "a !<= b" := (~nonstrictly_ordered a b)(at level 70).
-Notation "a <!= b" := (nonstrictly_neq_ordered a b)(at level 70).
-Notation "a !<!= b" := (~nonstrictly_neq_ordered a b)(at level 70).
+Notation "a < R < b" := (strictly_ordered R a b).
+Notation "a '<=' R '<=' b" := (nonstrictly_ordered R a b).
+Notation "a '<!=' R '<!=' b" := (nonstrictly_neq_ordered R a b)(at level 70, R at next level, no associativity).
+
+Definition strict_comparable (R : strict_order_relation) a b := a < R < b \/ b < R < a \/ a = b.
+Definition nonstrict_comparable (R : nonstrict_order_relation) a b := a <!= R <!= b \/ b <!= R <!= a \/ a = b.
+
+Record strict_chain {R : strict_order_relation} : Set := strict_chain_init {
+  SChain : set;
+  SChain_cond : SChain subseteq (upon_relation R) /\ (forall a b, a in SChain -> b in SChain -> strict_comparable R a b)
+}.
+Definition strict_chain_to_set {R} (C : @strict_chain R) := SChain C.
+Coercion strict_chain_to_set : strict_chain >-> set.
+Record nonstrict_chain {R : nonstrict_order_relation} : Set := nonstrict_chain_init {
+  NSChain : set;
+  NSChain_cond : NSChain subseteq (upon_relation R) /\ (forall a b, a in NSChain -> b in NSChain -> nonstrict_comparable R a b)
+}.
+Definition nonstrict_chain_to_set {R} (C : @nonstrict_chain R) := NSChain C.
+Coercion nonstrict_chain_to_set : nonstrict_chain >-> set.
+
+Definition maximal (R : nonstrict_order_relation) M := M in (upon_relation R) /\ forall e, e in (upon_relation R) -> ~(M <!= R <!= e).
+Definition maximum (R : nonstrict_order_relation) M := M in (upon_relation R) /\ forall e, e in (upon_relation R) -> (nonstrict_comparable R M e /\ ~(M <!= R <!= e)).
+Definition minimal (R : nonstrict_order_relation) M := M in (upon_relation R) /\ forall e, e in (upon_relation R) -> ~(e <!= R <!= M).
+Definition minimum (R : nonstrict_order_relation) M := M in (upon_relation R) /\ forall e, e in (upon_relation R) -> (nonstrict_comparable R M e /\ ~(e <!= R <!= M)).
+
 
 Example reflexive_relation_contains_identity_relation : forall R,
   reflexive R -> identity_relation (upon_relation R) subseteq R
@@ -678,7 +697,23 @@ Proof.
     all : apply H.
 Qed.
 
-Example poset_inverse_is_poset : forall R : poset, exists S : poset, inverse_relation R = S.
+Lemma inverse_upon_relation_identical : forall R, upon_relation R = upon_relation (inverse_relation R).
+Proof.
+  intros R. apply AXIOM_OF_EXTENSIONALITY.
+  intros z. split; intros H;
+  apply upon_relation_definition; apply upon_relation_definition in H;
+  destruct H; [right | left | right | left].
+  - apply image_definition. apply domain_definition in H.
+    destruct H as [e H]. exists e. apply inverse_relation_definition, H.
+  - apply domain_definition. apply image_definition in H.
+    destruct H as [f H]. exists f. apply inverse_relation_definition, H.
+  - apply image_definition. apply domain_definition in H.
+    destruct H as [f H]. exists f. apply -> inverse_relation_definition in H. apply H.
+  - apply domain_definition. apply image_definition in H.
+    destruct H as [e H]. exists e. apply -> inverse_relation_definition in H. apply H.
+Qed.
+
+Lemma poset_inverse_is_poset : forall R : poset, exists S : poset, inverse_relation R = S.
 Proof.
   intros R.
   assert(exists T : nonstrict_order_relation, inverse_relation R = T). {
@@ -701,11 +736,90 @@ Proof.
     exists (nonstrict_order_relation_init (inverse_relation R) H). reflexivity.
   }
   destruct H as [T H'].
-  
-(*  TBD  *)
-
-  exists (poset_init (T) H0).
-  }).
+  assert(~forall a b, a in (upon_relation T) -> b in (upon_relation T) -> (a />T<\ b \/ b />T<\ a \/ a = b)). {
+    intros H.
+    assert(upon_relation T = upon_relation R). {
+      apply AXIOM_OF_EXTENSIONALITY. intros z. split; intros H0.
+      - apply upon_relation_definition in H0. apply upon_relation_definition.
+        destruct H0; [right | left].
+        + apply domain_definition in H0. apply image_definition.
+          destruct H0 as [f H0]. exists f. rewrite <- H' in H0.
+          apply inverse_relation_definition, H0.
+        + apply image_definition in H0. apply domain_definition.
+          destruct H0 as [e H0]. exists e. rewrite <- H' in H0.
+          apply inverse_relation_definition, H0.
+      - apply upon_relation_definition in H0. apply upon_relation_definition.
+        destruct H0; [right | left].
+        + apply domain_definition in H0. apply image_definition.
+          destruct H0 as [f H0]. exists f. rewrite <- H'.
+          apply inverse_relation_definition, H0.
+        + apply image_definition in H0. apply domain_definition.
+          destruct H0 as [e H0]. exists e. rewrite <- H'.
+          apply inverse_relation_definition, H0.
+    } rewrite H0 in H.
+    assert(forall a b, a />T<\ b \/ b />T<\ a \/ a = b <-> a />R<\ b \/ b />R<\ a \/ a = b). {
+      intros a b. rewrite <- H'. split; intros H1; destruct H1; try (destruct H1).
+      - apply -> inverse_relation_definition in H1. right. left. apply H1.
+      - apply -> inverse_relation_definition in H1. left. apply H1.
+      - right. right. apply H1.
+      - right. left. apply inverse_relation_definition, H1.
+      - left. apply inverse_relation_definition, H1.
+      - right. right. apply H1.
+    }
+    assert(forall a b, a in (upon_relation R) -> b in (upon_relation R) -> a />R<\ b \/ b />R<\ a \/ a = b). {
+      intros a b H2 H3. apply H1. apply H. apply H2. apply H3.
+    }
+    apply (POSet_cond R) in H2. destruct H2.
+  }
+  exists (poset_init T H). simpl. apply H'.
 Qed.
+
+Example subseteq_cap_implies_subseteq_compose : forall (R R1 R2 : binary_relation),
+  equivalent R -> R subseteq (R1 cap R2) -> R subseteq (R1 @ R2)
+.
+Proof.
+  intros R R1 R2 H1 H2 e H3.
+  apply binary_relation_definition in H3.
+  destruct H3. destruct H0 as [a [b H3]]. subst.
+  apply compose_relation_definition.
+  do 2 (destruct H1).
+  exists a. split.
+  - assert(a />R<\ a). {
+      apply H0, upon_relation_definition. left.
+      apply domain_definition. exists b. apply H.
+    } apply H2, cap_definition in H4.
+    destruct H4. apply H4.
+  - apply H2, cap_definition in H.
+    destruct H. apply H4.
+Qed.
+
+Lemma maximum_element_is_unique_if_exists : forall R M1 M2, maximum R M1 -> maximum R M2 -> M1 = M2.
+Proof.
+  intros R M1 M2 [H1 H2] [H3 H4].
+  unfold maximum in *.
+  destruct (H2 M2). apply H3.
+  destruct (H4 M1). apply H1. clear H5.
+  destruct H. apply H0 in H. destruct H.
+  destruct H. apply H6 in H. destruct H.
+  apply H.
+Qed.
+
+(* TBD *)
+
+Lemma maximal_is_maximum_in_loset : forall (R : loset) M, maximal R M -> maximum R M.
+Proof.
+  intros R M [H1 H2]. split. apply H1.
+  intros e H. split.
+  - unfold nonstrict_comparable.
+    destruct (LOSet_cond R M e).
+    apply H1. apply H.
+    right. right. apply H2 in H.
+    unfold nonstrictly_neq_ordered in H.
+Abort.
+
+Lemma ex : forall a b c d : nat, ~(a = b /\ c <> d) -> a = b -> c = d.
+Proof.
+  intros a b c d H1 H2.
+Abort.
 
 End BinaryRelation.
