@@ -1,6 +1,5 @@
 Require Import set_theory.
 Import SetTheory.
-
 Module BinaryRelation.
 
 Record binary_relation : Set := binary_relation_init {
@@ -520,10 +519,14 @@ Coercion strict_partial_order_relation_to_strict_order_relation : strict_partial
 Definition strictly_ordered (R : strict_order_relation) (a b : set) := a />R<\ b.
 Definition nonstrictly_ordered (R : nonstrict_order_relation) (a b : set) := a />R<\ b.
 Definition nonstrictly_neq_ordered (R : nonstrict_order_relation) (a b : set) := a />R<\ b /\ a <> b.
+Definition not_nonstrictly_neq_ordered (R : nonstrict_order_relation) (a b : set) := ~(a />R<\ b) \/ a = b.
 
-Notation "a < R < b" := (strictly_ordered R a b).
-Notation "a '<=' R '<=' b" := (nonstrictly_ordered R a b).
-Notation "a '<!=' R '<!=' b" := (nonstrictly_neq_ordered R a b)(at level 70, R at next level, no associativity).
+Notation "a < R < b" := (strictly_ordered R a b) : type_scope.
+Notation "a !< R !< b" := (~strictly_ordered R a b)(at level 70, R at next level, no associativity) : type_scope.
+Notation "a '<=' R '<=' b" := (nonstrictly_ordered R a b) : type_scope.
+Notation "a '!<=' R '!<=' b" := (~nonstrictly_ordered R a b)(at level 70, R at next level, no associativity) : type_scope.
+Notation "a '<!=' R '<!=' b" := (nonstrictly_neq_ordered R a b)(at level 70, R at next level, no associativity) : type_scope.
+Notation "a '!<!=' R '!<!=' b" := (not_nonstrictly_neq_ordered R a b)(at level 70, R at next level, no associativity) : type_scope.
 
 Definition strict_comparable (R : strict_order_relation) a b := a < R < b \/ b < R < a \/ a = b.
 Definition nonstrict_comparable (R : nonstrict_order_relation) a b := a <!= R <!= b \/ b <!= R <!= a \/ a = b.
@@ -541,10 +544,10 @@ Record nonstrict_chain {R : nonstrict_order_relation} : Set := nonstrict_chain_i
 Definition nonstrict_chain_to_set {R} (C : @nonstrict_chain R) := NSChain C.
 Coercion nonstrict_chain_to_set : nonstrict_chain >-> set.
 
-Definition maximal (R : nonstrict_order_relation) M := M in (upon_relation R) /\ forall e, e in (upon_relation R) -> ~(M <!= R <!= e).
-Definition maximum (R : nonstrict_order_relation) M := M in (upon_relation R) /\ forall e, e in (upon_relation R) -> (nonstrict_comparable R M e /\ ~(M <!= R <!= e)).
-Definition minimal (R : nonstrict_order_relation) M := M in (upon_relation R) /\ forall e, e in (upon_relation R) -> ~(e <!= R <!= M).
-Definition minimum (R : nonstrict_order_relation) M := M in (upon_relation R) /\ forall e, e in (upon_relation R) -> (nonstrict_comparable R M e /\ ~(e <!= R <!= M)).
+Definition maximal (R : nonstrict_order_relation) M := M in (upon_relation R) /\ forall e, e in (upon_relation R) -> M !<!= R !<!= e.
+Definition maximum (R : nonstrict_order_relation) M := M in (upon_relation R) /\ forall e, e in (upon_relation R) -> (nonstrict_comparable R M e /\ (M !<!= R !<!= e)).
+Definition minimal (R : nonstrict_order_relation) M := M in (upon_relation R) /\ forall e, e in (upon_relation R) -> e !<!= R !<!= M.
+Definition minimum (R : nonstrict_order_relation) M := M in (upon_relation R) /\ forall e, e in (upon_relation R) -> (nonstrict_comparable R M e /\ (e !<!= R !<!= M)).
 
 
 Example reflexive_relation_contains_identity_relation : forall R,
@@ -799,9 +802,9 @@ Proof.
   unfold maximum in *.
   destruct (H2 M2). apply H3.
   destruct (H4 M1). apply H1. clear H5.
-  destruct H. apply H0 in H. destruct H.
-  destruct H. apply H6 in H. destruct H.
-  apply H.
+  do 2 (destruct H). destruct H0. apply H0 in H. destruct H. apply H0.
+  destruct H. destruct H6. apply H6 in H. destruct H.
+  subst. reflexivity. apply H.
 Qed.
 
 (* TBD *)
@@ -811,15 +814,95 @@ Proof.
   intros R M [H1 H2]. split. apply H1.
   intros e H. split.
   - unfold nonstrict_comparable.
-    destruct (LOSet_cond R M e).
-    apply H1. apply H.
-    right. right. apply H2 in H.
-    unfold nonstrictly_neq_ordered in H.
-Abort.
+    destruct (LOSet_cond R M e). apply H1. apply H.
+    apply H2 in H. destruct H. apply H in H0. destruct H0.
+    right. right. apply H. destruct H0.
+    apply H2 in H. destruct H. right. left.
+    split. apply H0. intros H'. subst. apply H in H0. destruct H0.
+    right. right. apply H. right. right. apply H0.
+  - apply H2, H.
+Qed.
 
-Lemma ex : forall a b c d : nat, ~(a = b /\ c <> d) -> a = b -> c = d.
+Definition subdivision (R : binary_relation) (y : set) := \{
+  x in (upon_relation R) :
+  fun x => (equivalent R /\ y />R<\ x)
+\}.
+Theorem subdivision_definition : forall R x e, e in (subdivision R x) <-> equivalent R /\ x />R<\ e.
 Proof.
-  intros a b c d H1 H2.
-Abort.
+  intros R x e. split; intros H.
+  - unfold subdivision, set_constraint in H.
+    destruct AXIOM_OF_SUBSETS as [A HA].
+    apply HA in H. destruct H. apply H0.
+  - unfold subdivision, set_constraint.
+    destruct AXIOM_OF_SUBSETS as [A HA].
+    apply HA. split.
+    destruct H. apply upon_relation_definition. right.
+    apply image_definition. exists x. apply H0.
+    apply H.
+Qed.
+
+Theorem not_relatedness_in_equivalence_relation1 : forall R x y,
+  equivalent R -> x in (upon_relation R) -> y in (upon_relation R) ->
+  ~(x />R<\ y) /\ ~(y />R<\ x) ->
+  (forall z, (x />R<\ z \/ z />R<\ x) -> (~(y />R<\ z) /\ ~(z />R<\ y)))
+.
+Proof.
+  intros R x y H1 H2 H3 H4 z H5.
+  destruct H4, H5; split; intros H6;
+  destruct H1; destruct H5; apply H; apply (H7 x z y).
+  apply H4. apply (H5 y z), H6.
+  apply H4. apply H6.
+  apply (H5 z x), H4. apply (H5 y z), H6.
+  apply (H5 z x), H4. apply H6.
+Qed.
+
+Theorem not_relatedness_in_equivalence_relation2 : forall R x y,
+  equivalent R -> x in (upon_relation R) -> y in (upon_relation R) ->
+  ~(x />R<\ y) /\ ~(y />R<\ x) ->
+  (subdivision R x) cap (subdivision R y) = {{}}
+.
+Proof.
+  intros R x y H1 H2 H3 H4.
+  apply AXIOM_OF_EXTENSIONALITY.
+  intros z. split; intros H.
+  - apply cap_definition in H. destruct H.
+    apply subdivision_definition in H.
+    apply subdivision_definition in H0.
+    intuition. clear H4 H.
+    destruct H1. destruct H0. apply H0 in H8.
+    destruct H5. apply H1 with z. apply H7. apply H8.
+  - apply no_set_is_in_emptyset in H. destruct H.
+Qed.
+
+Theorem relatedness_implies_same_subdivision : forall R x y,
+  equivalent R -> x in (upon_relation R) -> y in (upon_relation R) ->
+  (x />R<\ y \/ y />R<\ x)
+  -> (subdivision R x) = (subdivision R y)
+.
+Proof.
+  intros R x y H1 H2 H3 H4. apply AXIOM_OF_EXTENSIONALITY.
+  intros z. split; intros H; destruct H4;
+  apply subdivision_definition; apply subdivision_definition in H;
+  split; try (apply H1); destruct H; clear H; do 2 (destruct H1).
+  - apply H1 in H4. apply H5 with x. apply H4. apply H0.
+  - apply H1. apply H5 with x. apply H0. apply H4.
+  - apply H1. apply H5 with y. apply H0. apply H4.
+  - apply H1 in H4. apply H5 with y. apply H4. apply H0.
+Qed.
+
+Theorem element_in_equivalence_is_in_some_subdivision : forall R x,
+  equivalent R -> x in (upon_relation R) ->
+  exists y, x in (subdivision R y)
+.
+Proof.
+  intros R x H1 H2. exists x.
+  apply subdivision_definition. split. apply H1.
+  destruct H1. destruct H0. apply H, H2.
+Qed.
+
+(* TBD *)
+
+Definition cup_family (I : set) (P : set->set) : set.
+  
 
 End BinaryRelation.
