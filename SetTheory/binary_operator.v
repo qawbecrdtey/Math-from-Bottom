@@ -807,8 +807,6 @@ Proof.
   subst. reflexivity. apply H.
 Qed.
 
-(* TBD *)
-
 Lemma maximal_is_maximum_in_loset : forall (R : loset) M, maximal R M -> maximum R M.
 Proof.
   intros R M [H1 H2]. split. apply H1.
@@ -900,9 +898,6 @@ Proof.
   destruct H1. destruct H0. apply H, H2.
 Qed.
 
-(* TBD *)
-
-Definition cup_family (I : set) (P : set->set) : set.
-  
+Definition family_of_sets := set->set.
 
 End BinaryRelation.

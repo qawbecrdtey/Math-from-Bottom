@@ -1,6 +1,10 @@
 -R ./SetTheory SetTheory
 -R ./GroupTheory GroupTheory
+-R ./MatroidTheory MatroidTheory
+-R ./NaturalNumber NatrualNumber
 
 SetTheory/set_theory.v
 SetTheory/binary_operator.v
 GroupTheory/group_theory.v
+MatroidTheory/matroid_theory.v
+NaturalNumber/natural_number.v

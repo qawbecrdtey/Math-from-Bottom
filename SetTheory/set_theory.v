@@ -1,3 +1,5 @@
+Require Import Classical.
+
 Module SetTheory.
 
 Parameter set : Set.
