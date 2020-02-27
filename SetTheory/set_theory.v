@@ -28,7 +28,7 @@ Axiom AXIOM_OF_SUBSETS :
 Axiom AXIOM_OF_THE_SUM_SET :
   forall x,
     {y : set | forall u,
-      u in y <-> (exists z, z in x /\ u in z)}
+      u in y <-> {'z : set & z in x /\ u in z}}
 .
 Axiom AXIOM_OF_THE_POWER_SET :
   forall x,
@@ -38,9 +38,9 @@ Axiom AXIOM_OF_THE_POWER_SET :
 Axiom AXIOM_OF_INFINITY :
   {s : set | exists x,
     x in s /\ (forall y, ~(y in x)) /\
-    (forall z, (z in s -> exists u,
-      (u in s /\ (forall w,
-        (w in u <-> (u in z \/ u = z))))))}
+         (forall y, y in s ->
+                         (forall z, (forall w, w in z <-> w in y \/ w = y) ->
+  z in s))}
 .
 Axiom AXIOM_OF_REPLACEMENT :
   forall (prod : set->set->Prop) A,
