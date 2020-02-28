@@ -1,6 +1,7 @@
 -R ./SetTheory SetTheory
--R ./NaturalNumber NatrualNumber
+-R ./Numbers Numbers
 
 SetTheory/set_theory.v
-SetTheory/binary_operator.v
-NaturalNumber/natural_number.v
+SetTheory/binary_relation.v
+Numbers/natural_number.v
+Numbers/integer.v

@@ -367,4 +367,47 @@ Definition Pred : NAT->NAT.
   intros n. exact (NAT_init (bigcup \{x in NATset : fun x => x subsetneq n\}) (H n)).
 Admitted.
 
+Fixpoint nat_to_NAT (n : nat) := match n with
+  | 0     => NAT_ZERO
+  | S n'  => Succ (nat_to_NAT n')
+  end
+.
+
+Theorem nat_to_NAT_bijective :
+  (forall m n : nat, (nat_to_NAT m) = (nat_to_NAT n) -> m = n) /\
+  (forall N : NAT, exists n : nat, (nat_to_NAT n) = N)
+.
+Proof.
+  split. {
+  intros m. induction m.
+  - intros n H. simpl in H.
+    unfold nat_to_NAT in H.
+    destruct n. reflexivity.
+    apply NAT_equal, EQUAL_definition in H.
+    destruct H as [H _]. destruct (H {{}}) as [_ H0].
+    simpl in H0. assert({{}} in {{}}). apply H0, emptyset_in_Succ.
+    apply no_set_contains_itself in H1. destruct H1.
+  - intros n H. destruct n.
+    apply NAT_equal, EQUAL_definition in H.
+    destruct H as [H _]. destruct (H {{}}) as [H1 _].
+    assert({{}} in {{}}). apply H1, emptyset_in_Succ.
+    apply no_set_contains_itself in H0. destruct H0.
+    apply NAT_equal, EQUAL_definition in H.
+    destruct H as [H _].
+    assert(forall n : nat, (nat_to_NAT m) = (nat_to_NAT n) -> S m = S n). {
+      intros m' H0. apply IHm in H0. subst. reflexivity.
+    } clear IHm. apply H0. clear H0.
+    apply NAT_equal, AXIOM_OF_EXTENSIONALITY.
+    intros z. split; intros H0; simpl in H; admit.
+} intros [N HN].
+  assert(is_NAT N). apply NATset_definition, HN.
+  induction H. exists 0. apply NAT_equality.
+  apply NATset_definition in H.
+  destruct (IHis_NAT H) as [n Hn].
+  exists (S n). simpl. apply NAT_equal.
+  rewrite Hn. reflexivity.
+Admitted.
+
+Coercion nat_to_NAT : nat >-> NAT.
+
 End NaturalNumber.
